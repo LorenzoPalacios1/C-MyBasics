@@ -20,9 +20,9 @@
 
 int fDiscardLine(FILE *stream);
 
-size_t getStr(char **str, const char delim, const size_t length, FILE *stream);
+char *getStr(const char delim, const size_t length, FILE *stream);
 
-size_t getStrStdin(char **str, const size_t length);
+char *getStrStdin(const size_t length);
 
 int indexOf(const char *str, const char letter, const size_t offset);
 

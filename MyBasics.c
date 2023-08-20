@@ -37,93 +37,81 @@ inline int fDiscardLine(FILE *stream)
 
 /*
  * Writes to the first argument, str, from stream until reading the delimiter
- * character, or upon the string reaching the specified length.
+ * character, or upon the string reaching the specified maxLength.
  *
  * A null terminator will replace the delimiter within the string.
  *
  * Otherwise, if applicable and possible, a null terminator will be appended to the
  * end of the string if no delimiter was read or EOF was not met.
  *
- * If this occurs, the returned value will be length + 1.
+ * Returns a string, or NULL if nothing was written.
  *
- * Returns the length of the string INCLUDING the null terminator, or 0 if nothing was written.
- *
- * Returns 0 if stream is at EOF, or if the first character read is the specified delimiter.
- * If this function returns 0, 'str' WILL BE LEFT UNCHANGED (that is, nothing will be written).
+ * Returns NULL if stream is at EOF, or if the first character read is the specified delimiter.
  */
-size_t getStr(char **str, const char delim, const size_t length, FILE *stream)
+char *getStr(const char delim, const size_t maxLength, FILE *stream)
 {
-    // Validating the pointer to the string
-    if (str == NULL)
+    // Validating the maxLength argument for the string
+    if (maxLength == 0)
     {
-        fputs("\ngetStr(): Invalid pointer-to-pointer-to-char provided; No reading occurred\n", stderr);
-        return 0;
-    }
-
-    // Validating the length argument for the string
-    if (length == 0)
-    {
-        fprintf(stderr, "\ngetStr(): Invalid string length (%llu); No reading occurred\n", length);
-        return 0;
+        fprintf(stderr, "\ngetStr(): Invalid string maxLength (%llu); No reading occurred\n", maxLength);
+        return NULL;
     }
 
     // Validating that the input stream is, well, valid
     if (stream == NULL)
     {
         fputs("\ngetStr(): Invalid stream provided; No reading occurred\n", stderr);
-        return 0;
+        return NULL;
     }
 
-    // Ensuring stream isn't at EOF here so that we don't go through all the other stuff below
-    // just to return 0 anyway
+    // Ensuring 'stream' isn't at EOF here so that we don't go through all the other stuff below
+    // just to return NULL anyway
     if (feof(stream))
-        return 0;
+        return NULL;
 
-    // Reading from stream into str
-    // "length + 1" to ensure there is always space for a null terminator
-    char buffer[length + 1];
+    // Reading from 'stream'
+    // "maxLength + 1" to ensure there is always space for a null terminator
+    char buffer[maxLength + 1];
     size_t i = 0;
-    for (; i < length; i++)
+    for (; i < maxLength; i++)
     {
         buffer[i] = getc(stream);
         if (buffer[i] == delim || buffer[i] == EOF)
         {
-            // Incrementing 'i' since we count the null terminator in the string's returned length
+            // Incrementing 'i' since we count the null terminator in the string's returned maxLength
             buffer[i++] = '\0';
             break;
         }
     }
 
-    // If nothing meaningful was read then we can just return 0, leaving the 'str' argument untouched.
+    // If nothing meaningful was read then we can just return NULL.
     // This will usually occur if only the specified delimiter character was read from the 'stream'
     // which gets replaced by the null terminator.
     if (buffer[0] == '\0')
-        return 0;
+        return NULL;
 
-    // Appending a null terminator and adding it to the string's returned length, 'i', if not all of
-    // the input within 'stream' was read
-    if (i == length)
+    // Appending a null terminator if not all of the input within 'stream' was read
+    // Incrementing 'i' since it denotes the length of the string, which is needed for the strcpy
+    // call below
+    if (i == maxLength)
         buffer[i++] = '\0';
 
-    // Allocating memory for 'str' if the user hadn't already allocated for it themselves
-    if (*str == NULL)
-    {
-        *str = malloc(sizeof(char) * i);
-        // Allocation failure insurance
-        if (*str == NULL)
-        {
-            fputs("\ngetStr(): malloc() failure; No reading occurred\n", stderr);
-            return 0;
-        }
-    }
-    strcpy_s(*str, sizeof(char) * i, buffer);
+    char *final = malloc(sizeof(char) * i);
 
-    return i;
+    // Allocation failure insurance
+    if (final == NULL)
+    {
+        fputs("\ngetStr(): malloc() failure; No reading occurred\n", stderr);
+        return NULL;
+    }
+    strcpy_s(final, sizeof(char) * i, buffer);
+
+    return final;
 }
 
 /*
  * Writes to the first argument, 'str', from stdin until reading a newline character,
- * or upon the string reaching the specified length.
+ * or upon the string reaching the specified maxLength.
  *
  * The difference between getStr() and this function is that this function has an
  * implicit delimiter, '\\n', an implicit stream, 'stdin', and will automatically flush
@@ -131,15 +119,16 @@ size_t getStr(char **str, const char delim, const size_t length, FILE *stream)
  *
  * This function has the same semantics as getStr() aside from the flushing of stdin.
  */
-inline size_t getStrStdin(char **str, const size_t length)
+inline char *getStrStdin(const size_t maxLength)
 {
-    const size_t numChars = getStr(str, '\n', length, stdin);
-    // If 'numChars' is greater than the passed length, that means getStr() appended a null terminator
+    char *str = getStr('\n', maxLength, stdin);
+    // If 'numChars' is greater than the passed maxLength, that means getStr() appended a null terminator
     // due to not encountering a newline, which means there is still input that needs to be flushed,
     // hence the fseek() call below.
-    if (numChars > length)
+    if (str != NULL && strlen(str) > maxLength)
         fseek(stdin, 0, SEEK_END);
-    return numChars;
+    
+    return str;
 }
 
 /* Returns the first index of the passed character within the passed string after
@@ -234,7 +223,6 @@ int strToInt(const char *str, int *num)
     // Preemptively handling a 0-length string or a single negative dash
     if (STR_SIZE == 0 || (STR_SIZE == 1 && isNegative))
         return ERRCODE_BAD_STR;
-
 
     // Removing any leading zeros and checking for invalid characters since the passed str should contain
     // only numerical characters, and any leading non-numerical characters would simply be ignored rather
