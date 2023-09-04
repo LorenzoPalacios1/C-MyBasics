@@ -1,0 +1,10 @@
+1. Make an array type with a struct(?) that stores its length as a 'size_t'
+- The array WILL have to be created and destroyed with special functions provided by the library - no way around it
+- Figure out whether or not a macro is necessary for this; maybe try using void pointer black magic or char pointers, since char always promotes(?)
+
+2. Implement some form of 'foreach()' like in Java
+- For now, focus on having it iterate over the arrays referenced in idea 1
+- Later, try expanding it to iterate over structs by abusing pointers(?)
+- After that, figure something else out you lazy dumbass, like doing actual work
+
+3. Use DOxygen to document the functions in a better manner

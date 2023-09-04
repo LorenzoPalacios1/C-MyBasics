@@ -17,9 +17,8 @@
 #define NUM_TEST_STRINGS 50
 
 // Determines the base size for each test string to grow by.
-// For each 10 strings generated, this value will be multiplied by 2, making the generated
-// string's length equal to the expression (TEST_STRING_BASE_LENGTH * 2)
-#define TEST_STRING_BASE_LENGTH 10
+// For every 10 strings generated, the string length will increase by this amount.
+#define TEST_STRING_BASE_LENGTH 0
 
 // Determines whether or not the test strings should use certain characters or not.
 // Set to false, 0, to prevent the test strings from using ranges of characters, and non-zero
@@ -44,20 +43,6 @@
 #define VIS_CHAR_START (char)(' ' + 1)
 // The maximum signed char value for a visible character (inclusive).
 #define VIS_CHAR_END (char)('' - 1)
-
-/* Contains strings generated at the start of the program for use in the testing functions below.
- *
- * This is done to make timing the tests more accurate, since generating the strings will be handled
- * at program start-up instead of during the tests themselves.
- *
- * Generic access to the strings should be done using get_test_string().
- * You can access the string by specific indexes if you want a specific string length, but you will have
- * to handle regenerating the strings yourself if you exhaust all of the available strings.
- *
- * Indexes 0-9 will have strings of length 10, indexes 10-19 will have strings of length 20,
- * indexes 20-29 will have strings of length 30, and so on and so forth.
- */
-static char *test_strings[NUM_TEST_STRINGS];
 
 /*
  * - Random Singleton Generators -
@@ -271,23 +256,36 @@ FILE *generate_test_file_range(const char *filename, const size_t num_chars, con
  * - Utility Functions -
  */
 
+/* Contains strings generated at the start of the program for use in the testing functions below.
+ *
+ * This is done to make timing the tests more accurate, since generating the strings will be handled
+ * at program start-up instead of during the tests themselves.
+ *
+ * Generic access to the strings should be done using get_test_string().
+ * You can access the string by specific indexes if you want a specific string length, but you will have
+ * to handle regenerating the strings yourself if you exhaust all of the available strings.
+ *
+ * Indexes 0 - 9 will have strings of length L, indexes 10 - 19 will have strings of length 2L,
+ * indexes 20 - 29 will have strings of length 3L, and so on and so forth, where L is TEST_STRING_BASE_LENGTH.
+ */
+static char *test_strings[NUM_TEST_STRINGS];
+
 /* Generates a series of strings and assigns them to 'test_strings'.
  * This function does not use generate_test_string() or similar functions, but does use the
  * random_vis_char() function family.
  *
- * Indexes 0 - 9 will have strings of length 10, indexes 10 - 19 will have strings of length 20,
- * indexes 20 - 29 will have strings of length 30, and so on and so forth.
  */
 void gen_test_strings(void)
 {
-    assert(NUM_TEST_STRINGS > 0);
-
     for (int i = 0; i < NUM_TEST_STRINGS; i++)
     {
         const size_t STR_SIZE = (i / 10 + 1) * TEST_STRING_BASE_LENGTH * sizeof(char);
 
         // STR_SIZE + sizeof(char) to account for the null terminator
-        if (test_strings[i] == NULL) {
+        // Since TEST_STRING_BASE_LENGTH will not change during runtime, we only need to allocate memory
+        // once and overwrite the pre-existing data when regenerating the strings
+        if (test_strings[i] == NULL)
+        {
             test_strings[i] = malloc(STR_SIZE + sizeof(char));
         }
 
@@ -479,7 +477,7 @@ int main(void)
     // Generating the random strings for this session's run
     puts("Generating test strings...");
     gen_test_strings();
-    printf_s("Generation completed in %ldms\n", clock() - global_timer);
+    printf_s("Generation completed in %ldms\n\n", clock() - global_timer);
 
     const clock_t user_input_timer = clock();
     const int *user_choices = tests_prompt();
